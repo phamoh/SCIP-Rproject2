@@ -1,0 +1,311 @@
+---
+title: "Project 2 - CA Covid-19 Vaccine Data"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+### What you need to get started:
+
+1) Set your working directory to the folder with this RMD file and dataset
+2) Load the libraries/packages you'll need (eg. ggplot and zoo)
+3) You will then load the dataset
+
+Today's project is inspired by the graphics in this article in the LA Time about COVID-19 vaccinations in California. I also included a pdf version of the article from May 10th in case the link no longer works.
+Link: https://www.latimes.com/projects/california-coronavirus-cases-tracking-outbreak/covid-19-vaccines-distribution/#county-comparison
+
+Note: This dataset was downloaded on May 10, 2021 so some of the data will be different than the news by the time you do your project. If you would like to download the latest dataset, you can visit https://data.ca.gov/dataset/covid-19-vaccine-progress-dashboard-data and download the "Statewide COVID-19 Vaccines Administered By County" csv file.
+
+If you want to learn more about the data, in this folder is also an xlsx file that gives you more of an in-depth description of the data collected. The file is called "covid-19-progress-dashboard-data-dictionary.xlsx"
+
+```{r setup, include=FALSE}
+# You may need to install the package zoo
+# install.packages("zoo")
+library(ggplot2)
+library(zoo)
+```
+
+```{r loading data}
+# Loading vaccine administered dataset 
+vaccine_admin <- read.csv("covid-19-progress-county-051021.csv")
+
+```
+
+### Simple Data Clean-up:
+
+Sometimes data can be very messy. Data entry can include extra white spaces that can mess up your analysis.
+
+So before you begin your analysis with datasets involving text, you should remove any extra white spaces.
+
+R has a base function that will help you remove extra spaces within the sentences and at the end.
+
+```{r trimws practice}
+# To learn more about the trimws function
+?trimws
+
+# Creating a string of text that has an extra white space
+test_text1 <- "I am writing a sentence with an extra space at the end "
+
+# Run this code and take a look in the console, you'll notice that the output there is no longer a white space at the end
+# You can change where the white space is removed, "left", "right", "both"
+trimws(test_text1, which = "right")
+
+# What do think the output of this text string will be?
+# Hint: remember you will need to specify which direction you want to trim! 
+test_text2 <- "I am writing a    sentence with an extra spaces everywhere "
+
+# Test it out yourself with the variable test_text2 we just created!
+trimws()
+
+```
+Notes:
+
+
+
+
+Now lets use trimws() on the county column in our vaccine dataset.
+Tip: You need to remember to assign it to a variable to see the results. Here we are re-assigning it to the county column.
+
+```{r trimws dataset}
+# Specifying "both" will ensure that extra white spaces will be removed throughout
+vaccine_admin$county <- trimws(vaccine_admin$county, which = "both")
+
+```
+
+
+In this dataset, we know that the "administered_date" column are dates but R doesn't know that unless we specify the data type. In order for R to handle these data points as dates, you will need to tell it the date fromat that it is in since dates can be represented in different ways. For example, in the US dates are usually mm/dd/yyyy while Asia it is yyyy/mm/dd. To find out what %Y-%m-%d is and other formats, take a look at the link.
+
+Link:
+https://www.statmethods.net/input/dates.html
+
+Question: If the date is 01/Jan/2020 (e.g. dd/mmm/yyyy), what would the format be in as.Date?
+
+```{r}
+random_date <- "15/Jan/2020"
+
+# Fill in the format
+as.Date(random_date, format = " ")
+
+```
+Notes:
+
+
+
+Here, we format administered_date column with the date format
+```{r formatting dates}
+
+vaccine_admin$administered_date <- as.Date(vaccine_admin$administered_date, format = "%Y-%m-%d")
+
+```
+
+
+
+
+### Calculating the percentage of those vaccinated:
+
+For this section, we will take a subset of the data. We will focus on the rows that have data for "All CA Counties".
+
+You have used the subset() function in some of the Udacity lessons. 
+
+```{r subset}
+
+vaccine_CA <- subset(vaccine_admin, county == "All CA Counties")
+
+```
+
+Now, we will need to use R like a calculator and calculate percentages.
+
+In the article "Tracking coronavirus vaccinations in California", the LA Times does not give us the population count of California used to calculate percentage. So here, we'll be using the number of 39,466,917 based on some web searches. Feel free to change this number based on other sources!
+
+```{r calculating percentage}
+
+CA_pop <- c(39466917)
+
+# In these two lines, we are calculating the percentage of those who have had at least one dose (this is for those who are partially vaccinated). 
+# And then rounding the number to two decimal places using the round() 
+vaccine_CA$partial_percent <- (vaccine_CA$cumulative_at_least_one_dose/CA_pop)*100
+vaccine_CA$partial_percent <- round(vaccine_CA$partial_percent, digits = 2)
+
+# This is combining the two steps above into one to calculate the percentage of those who are fully vaccinated
+vaccine_CA$fully_percent <- round(((vaccine_CA$cumulative_fully_vaccinated/CA_pop)*100), digits = 2)
+
+```
+
+Question: Take a look at the new percentages columns in the dataset (particularly the last one). Compare it to the percentages in the pdf (49.1% of residents have received at least one dose and 35.7% are fully vaccinated). Out percentages are close, but why do you think the calculations might differ from each other?
+
+Answer:
+
+
+
+
+### Recreating the plots by the LA Times:
+
+Now that we have calculated the percentages, we will now plot the graph like the first one in the LA Times.
+
+We will use different functions from the graphic library ggplot2 which you have been using.
+
+Note: All graphics in the ggplot2 library are built using a layered approach, building layers up to create the final graphic. So to build the graphic we will plot the "partially" vaccinated layer first and the "fully" vaccinated on top.
+
+If you plot the "fully" vaccinated layer first and the "partially" vaccinated layer second, you will not be able to see the "fully" vaccinated area unless you change the opacity of the graph because the area is larger and covers the other plot/layer.
+
+You can use differnt names of colors or hex codes for graphs. 
+For more colors to use for graphs, you can take a look at this :link
+http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf
+
+To learn more about changing the colour, fill and opacity
+Link: https://ggplot2.tidyverse.org/reference/aes_colour_fill_alpha.html
+
+
+```{r plotting percentages}
+
+# This will show you the column names in the dataset
+names(vaccine_CA)
+
+# Plotting the inital graph with the first layer for the partially vaccinated percentages
+ggplot(data = vaccine_CA, aes(x = administered_date, y = partial_percent)) +
+  geom_area(fill = "darkolivegreen3")
+
+# Adding the second layer with the fully vaccinated percentages
+ggplot(data = vaccine_CA, aes(x = administered_date, y = partial_percent)) +
+  geom_area(fill = "darkolivegreen3") + 
+  geom_area(aes(x = administered_date, y = fully_percent), fill="forestgreen")
+
+# Here is an example of changing the opacity of the graph with the aesthetic parameter alpha
+ggplot(data = vaccine_CA, aes(x = administered_date, y = partial_percent)) +
+  geom_area(fill = "darkolivegreen3", alpha = 0.4) + 
+  geom_area(aes(x = administered_date, y = fully_percent), fill="forestgreen", alpha = 0.4)
+
+```
+
+Our plot looks pretty similar to the one in the article!
+
+Something else we can add to this plot that isn't shown in the article is a horizontal line. A horizontal line could be useful to show data with some goal line or limits. For example, if California's goal is to have 80% of their residents vaccinated, the "goal line" could show where the curve should be.
+
+In the plot below, we will first change the limits of the y-axis and then we can add a horizontal line and change the appearance of that line. Try changing the position, color and the design of the line. More information about this can be found in the link.
+
+Link:
+http://www.sthda.com/english/wiki/ggplot2-line-types-how-to-change-line-types-of-a-graph-in-r-software
+
+```{r horizontal line}
+
+# Try changing the line type with something different
+
+ggplot(data = vaccine_CA, aes(x = administered_date, y = partial_percent)) +
+  geom_area(fill="green") + 
+  geom_area(aes(x= administered_date, y = fully_percent), fill="blue") +
+  ylim(0, 100) +
+  geom_hline(yintercept = 80, linetype='longdash')
+
+```
+
+Now, we're going to create the second plot in the article. In that plot, they overlay a summary line.
+
+You'll learn more in udacity about overlaying a summary and how to do that with ggplot.
+
+We're going to do it a little differently using a package called "zoo". This package was made for data involving times series.
+
+You may need to install this package by runing the code: install.packages("zoo")
+
+Note from Olivia: I was able to find this package by googling "how to calculate average for every 7 days in R". This isn't a package I use often so I was excited about this cool function that calculates rolling means. 
+
+Yo'll see that I typed zoo::rollmean(). This is when you want to specify a function from a specific package. Sometimes function names are the same in multiple packages.
+
+```{r summary overlay}
+
+# Use the function rollmean() to calculate rolling averages over 7 days
+vaccine_CA$wk_avg <- zoo::rollmean(vaccine_CA$total_doses, k = 7, fill = NA)
+
+# Round the number to the nearest whole number
+vaccine_CA$wk_avg <- round(vaccine_CA$wk_avg, digits = 0)
+
+# Because the data has NAs, a warning message will appear: "Removed 6 row(s) containing missing values (geom_path)"
+# So you can na.rm = T to remove the NAs from the plot
+ggplot(data = vaccine_CA, aes(x = administered_date, y = total_doses)) +
+  geom_col(fill = "yellowgreen") +
+  scale_y_continuous() +
+  geom_line(data = vaccine_CA, aes(x = administered_date, y = wk_avg), na.rm = T, color = "darkgreen")
+
+```
+
+We just completed re-creating two plots that look pretty similar to the ones in the article!  
+
+
+### Your turn to pick a county and recreate the plots:
+
+Now, it's your turn to create these plots for a county in California. There are 58 different counties to choose from! You could pick a county that you live in or a county you like to visit. 
+
+```{r subset county}
+# Fill in the county of your chose to subset
+subset(vaccine_admin, county == " ")
+
+```
+
+Now, you'll need to calculate the percentages for those partially (at least one dose) and those who are fully vaccinated.
+
+Hint: 
+The partially vaccinated column is named "cumulative_at_least_one_dose"
+The fully vaccinated column is named "cumulative_fully_vaccinated"
+
+```{r calculating county percentage}
+# Fill in the county's population
+county_pop <- c()
+
+# Calculate the percentage the percentage of those who have had at least one dose in that county
+
+
+# Calculate the percentage of those who are fully vaccinated in that county
+
+
+
+```
+
+# Plot 1: Percentages for your county 
+
+Now graph the first plot of those who are partially and fully vaccinated in that county
+
+```{r plot county percentage}
+
+ggplot(data = , aes(x= , y= )) +
+  geom_area(fill = " ")
+```
+
+Now let's add some labels to the plot
+
+For the plot:
+1) Add a title
+2) Change the name of the x-axis
+3) Change the name of the y-axis
+
+
+```{r labeling axis}
+
+
+```
+
+
+# Plot 2: Doses administered by your county 
+
+
+Now try the summary overlay for that county of total does administered.
+
+Hint: remember to assign the calculations of the rolling averages to a variable like we did above!
+
+```{r plot county summary overlay}
+
+# Use the function rollmean() to calculate rolling averages over 7 days
+zoo::rollmean( , k = 7, fill = NA)
+
+# Round the number to the nearest whole number
+
+
+```
+
+Now let's plot the second plot of the doses administered by day for your county
+
+```{r plot county doses }
+
+
+```
+
+
+Share with us one of your plots in the question-forum!
