@@ -1,6 +1,6 @@
-# SCIP-Rproject2
+# SCIP Project 2
 
-This repository contains the files of a project I created for beginners in R in the Science Coding Immersion Program (SCIP). 
+This repository contains the files of a project I created for beginners in R in the Science Coding Immersion Program (SCIP). I have also included a notebook where I translated R to Python for SCIP participants who are learning Python.
 
 This project was inspired by an [LA Times online article][ref1] about tracking coronavirus vaccinations in California. Participants in the SCIP program were to recreate two graphics found in the article based on data downloaded on *May 10, 2021*. The data downloaded was from [California Open Data][ref2].
 
